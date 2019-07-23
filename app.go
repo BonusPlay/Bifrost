@@ -1,16 +1,17 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/BonusPlay/Bifrost/discord"
 	ircbot "github.com/BonusPlay/Bifrost/irc"
 	. "github.com/BonusPlay/Bifrost/util"
 	"github.com/bwmarrin/discordgo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/thoj/go-ircevent"
-	"os"
-	"os/signal"
-	"syscall"
+	irc "github.com/thoj/go-ircevent"
 )
 
 var dsession *discordgo.Session
@@ -50,6 +51,7 @@ func setupConfig() (err error) {
 	return
 }
 
+// TODO: use discord webhooks to spoof message author
 func onIrcMsg(event *irc.Event) {
 	msg := &discordgo.MessageSend{
 		Content: event.Message(),
