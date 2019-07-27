@@ -13,7 +13,10 @@ Currently it requires a `bifrost.cfg` to be in same folder as executable. Struct
 {
 	"irc": {
 		"cert": "",     // path to certificate file
-		"key": ""       // path to key file
+		"key": "",      // path to key file
+		"nick": "",     // irc nickname
+		"user": "",     // irc username
+		"real_name": "" // your real name (optional)
 	},
 	"discord": {
 		"token": "",    // your bot token

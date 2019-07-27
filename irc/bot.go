@@ -13,8 +13,10 @@ func SetupBot() {
 	cert, err := tls.LoadX509KeyPair(viper.GetString("irc.cert"), viper.GetString("irc.key"))
 	CheckError("Failed to load certificates", err)
 
-	IrcSession = irc.IRC("BonusPlay", "Bonus")
-	IrcSession.RealName = "Adam Kliś"
+	IrcSession = irc.IRC(viper.GetString("irc.nick"), viper.GetString("irc.user"))
+	if viper.IsSet("irc.real_name") {
+		IrcSession.RealName = viper.GetString("irc.real_name")
+	}
 	IrcSession.UseTLS = true
 	IrcSession.TLSConfig = &tls.Config{
 		Certificates: []tls.Certificate{cert},
@@ -61,8 +63,6 @@ func GetChannelId(event *irc.Event) (channelid string) {
 	return
 }
 
-
-// TODO: wait for both connections to perform this
 func onIrcConnected(_ *irc.Event) {
 	channels, err := Dsession.GuildChannels(viper.GetString("discord.guild"))
 	CheckError("Failed to fetch guild channels", err)
