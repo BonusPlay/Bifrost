@@ -41,7 +41,7 @@ func SendMessage(channelId string, msg string, username string) {
 
 	data := discordgo.WebhookParams{
 		Username: username,
-		Content: msg,
+		Content:  msg,
 	}
 
 	err = Dsession.WebhookExecute(webhookId, webhookToken, false, &data)
@@ -62,7 +62,6 @@ func GetChannelByName(name string) (channelid string) {
 	CheckError("Failed to fetch guild channels", err)
 
 	for _, channel := range channels {
-
 		if channel.Name == name {
 			return channel.ID
 		}
@@ -156,8 +155,8 @@ func onChannelEdited(dsession *discordgo.Session, m *discordgo.ChannelUpdate) {
 
 func onDiscordMsg(dssession *discordgo.Session, m *discordgo.MessageCreate) {
 
-	// Ignore all messages created by the bot itself
-	if m.Author.ID == dssession.State.User.ID {
+	// Ignore all messages created by bots (includes IRC messages)
+	if m.Author.Bot {
 		return
 	}
 
