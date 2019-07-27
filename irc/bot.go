@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	irc "github.com/thoj/go-ircevent"
+	"strings"
 )
 
 func SetupBot() {
@@ -87,5 +88,13 @@ func onIrcConnected(_ *irc.Event) {
 
 func onIrcMsg(event *irc.Event) {
 	channelId := GetChannelId(event)
-	discord.SendMessage(channelId, event.Message(), event.Nick)
+	discord.SendMessage(channelId, EnrichMsg(event.Message()), event.Nick)
+}
+
+// add mentions to IRC messages
+func EnrichMsg(msg string) string {
+	member, err := Dsession.State.Member(viper.GetString("discord.guild"), viper.GetString("discord.user"))
+	CheckError("Failed to get client member", err)
+
+	return strings.ReplaceAll(msg, IrcSession.GetNick(), member.Mention())
 }

@@ -20,7 +20,8 @@ Currently it requires a `bifrost.cfg` to be in same folder as executable. Struct
 	},
 	"discord": {
 		"token": "",    // your bot token
-		"guild": ""     // your guild (discord server) ID
+		"guild": "",    // your guild (discord server) ID
+		"user": "",     // your discord user ID (to mention)
 	}
 }
 ```
