@@ -4,38 +4,34 @@ import (
 	"crypto/tls"
 	"github.com/BonusPlay/Bifrost/discord"
 	. "github.com/BonusPlay/Bifrost/util"
-	"github.com/bwmarrin/discordgo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	irc "github.com/thoj/go-ircevent"
 )
 
-func SetupBot() (irccon *irc.Connection) {
+func SetupBot() {
 	cert, err := tls.LoadX509KeyPair(viper.GetString("irc.cert"), viper.GetString("irc.key"))
 	CheckError("Failed to load certificates", err)
 
-	irccon = irc.IRC("BonusPlay", "Bonus")
-	irccon.RealName = "Adam Kliś"
-	irccon.UseTLS = true
-	irccon.TLSConfig = &tls.Config{
+	IrcSession = irc.IRC("BonusPlay", "Bonus")
+	IrcSession.RealName = "Adam Kliś"
+	IrcSession.UseTLS = true
+	IrcSession.TLSConfig = &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}
 
-	err = irccon.Connect("chat.freenode.net:6697")
+	err = IrcSession.Connect("chat.freenode.net:6697")
 	CheckError("Failed to connect to Freenode", err)
 
-	for _, channel := range viper.GetStringSlice("channels") {
-		irccon.Join(channel)
-	}
-
-	return
+	IrcSession.AddCallback("PRIVMSG", onIrcMsg)
+	IrcSession.AddCallback("001", onIrcConnected)
 }
 
-func GetChannelId(dsession *discordgo.Session, event *irc.Event) (channelid string) {
+func GetChannelId(event *irc.Event) (channelid string) {
 
 	// status message
 	if len(event.Nick) == 0 {
-		channelid = discord.GetChannelByName(dsession, "status")
+		channelid = discord.GetChannelByName("status")
 
 		if len(channelid) == 0 {
 			log.Fatal("Failed to find status channel")
@@ -47,20 +43,49 @@ func GetChannelId(dsession *discordgo.Session, event *irc.Event) (channelid stri
 	// channel message
 	if event.Arguments[0][0] == '#' {
 		channelName := event.Arguments[0][1:len(event.Arguments[0])]
-		channelid = discord.GetChannelByName(dsession, channelName)
+		channelid = discord.GetChannelByName(channelName)
 
 		if len(channelid) == 0 {
-			channelid = discord.CreateDMChannel(dsession, channelName, "IRC-Channels").ID
+			channelid = discord.CreateChannel(channelName, "IRC-Channels").ID
 		}
 
 		return
 	}
 
 	// DM
-	channelid = discord.GetChannelByName(dsession, event.Nick)
+	channelid = discord.GetChannelByName(event.Nick)
 	if len(channelid) == 0 {
-		channelid = discord.CreateDMChannel(dsession, event.Nick, "IRC-DMs").ID
+		channelid = discord.CreateChannel(event.Nick, "IRC-DMs").ID
 	}
 
 	return
+}
+
+
+// TODO: wait for both connections to perform this
+func onIrcConnected(_ *irc.Event) {
+	channels, err := Dsession.GuildChannels(viper.GetString("discord.guild"))
+	CheckError("Failed to fetch guild channels", err)
+
+	for _, channel := range channels {
+
+		// skip categories
+		if len(channel.ParentID) == 0 {
+			continue
+		}
+
+		//parent, err := dsession.Channel(channel.ParentID)
+		parent, err := Dsession.State.Channel(channel.ParentID)
+		CheckError("Failed to fetch parent channel", err)
+
+		// only join channels, not DMs
+		if parent.Name == "IRC-Channels" {
+			IrcSession.Join("#" + channel.Name)
+		}
+	}
+}
+
+func onIrcMsg(event *irc.Event) {
+	channelId := GetChannelId(event)
+	discord.SendMessage(channelId, event.Message(), event.Nick)
 }

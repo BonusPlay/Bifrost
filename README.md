@@ -1,8 +1,9 @@
 # Bifrost
 
-This is a small utility project to turn a discord server (guild) into a IRC client.
-
-It creates a new discord channel for every respective IRC channel. It also creates a channel for every unique DM.
+This is a small utility project to turn a discord server (guild) into a IRC client. It joins all IRC channels with same
+ name as discord channels from `IRC-Channels` category. It also creates a channel for every unique DM under `IRC-DMs` category.
+ To join/leave IRC channel just add/remove discord channel with same name (without `#` prefix, since discord channel names
+ cannot contain that symbol, so if you want to join `#archlinux` add a `archlinux` channel under `IRC-Channels`).
 
 ## Setup
 
@@ -17,10 +18,7 @@ Currently it requires a `bifrost.cfg` to be in same folder as executable. Struct
 	"discord": {
 		"token": "",    // your bot token
 		"guild": ""     // your guild (discord server) ID
-	},
-	"channels": [       // array of IRC channel names
-		""
-	]
+	}
 }
 ```
 
