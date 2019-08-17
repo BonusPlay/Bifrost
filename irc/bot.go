@@ -26,8 +26,12 @@ func SetupBot() {
 	err = IrcSession.Connect("chat.freenode.net:6697")
 	CheckError("Failed to connect to Freenode", err)
 
-	IrcSession.AddCallback("PRIVMSG", onIrcMsg)
 	IrcSession.AddCallback("001", onIrcConnected)
+	IrcSession.AddCallback("PRIVMSG", onIrcMsg)
+	IrcSession.AddCallback("353", onNames) // NAMES command lists all users in channel
+	IrcSession.AddCallback("366", onNamesEnd) // NAMES end
+	//IrcSession.AddCallback("671", onNames) // whois secure
+	//IrcSession.AddCallback("*", onNames)
 }
 
 func GetChannelId(event *irc.Event) (channelid string) {
@@ -75,14 +79,31 @@ func onIrcConnected(_ *irc.Event) {
 			continue
 		}
 
-		//parent, err := dsession.Channel(channel.ParentID)
-		parent, err := Dsession.State.Channel(channel.ParentID)
+		parent, err := Dsession.Channel(channel.ParentID)
+		//parent, err := Dsession.State.Channel(channel.ParentID)
 		CheckError("Failed to fetch parent channel", err)
 
 		// only join channels, not DMs
 		if parent.Name == "IRC-Channels" {
 			IrcSession.Join("#" + channel.Name)
 		}
+	}
+}
+
+func onNames(event *irc.Event) {
+	channelName := event.Arguments[2][1:len(event.Arguments[2])]
+	if command, ok := discord.Commands[channelName]; ok {
+		casted := command.(discord.CNames)
+		names := strings.Split(event.Arguments[3], " ")
+		casted.Buf[channelName] = append(casted.Buf[channelName], names...)
+	}
+}
+
+func onNamesEnd(event *irc.Event) {
+	channelName := event.Arguments[1][1:len(event.Arguments[1])]
+	if command, ok := discord.Commands[channelName]; ok {
+		casted := command.(discord.CNames)
+		casted.AtEnd(channelName)
 	}
 }
 

@@ -5,7 +5,10 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/spf13/viper"
 	"regexp"
+	"strings"
 )
+
+var Commands map[string]Command
 
 func SetupBot() {
 	session, err := discordgo.New("Bot " + viper.GetString("discord.token"))
@@ -17,6 +20,13 @@ func SetupBot() {
 	Dsession.AddHandler(onChannelCreated)
 	Dsession.AddHandler(onChannelDeleted)
 	Dsession.AddHandler(onChannelEdited)
+
+	Commands = make(map[string]Command)
+	Commands["help"] = new(CHelp)
+	Commands["names"] = CNames{
+		Buf: map[string][]string{},
+	}
+	Commands["whois"] = new(CWhois)
 }
 
 func SendMessage(channelId string, msg string, username string) {
@@ -112,7 +122,7 @@ func onChannelCreated(dsession *discordgo.Session, m *discordgo.ChannelCreate) {
 		return
 	}
 
-	parent, err := dsession.State.Channel(m.ParentID)
+	parent, err := Dsession.State.Channel(m.ParentID)
 	CheckError("Failed to get parent channel", err)
 
 	// we can ignore DMs here, since bot will auto-connect on first message
@@ -128,7 +138,7 @@ func onChannelDeleted(dsession *discordgo.Session, m *discordgo.ChannelDelete) {
 		return
 	}
 
-	parent, err := dsession.State.Channel(m.ParentID)
+	parent, err := Dsession.State.Channel(m.ParentID)
 	CheckError("Failed to get parent channel", err)
 
 	// we can ignore DMs here, since bot will auto-connect on first message
@@ -144,7 +154,7 @@ func onChannelEdited(dsession *discordgo.Session, m *discordgo.ChannelUpdate) {
 		return
 	}
 
-	parent, err := dsession.State.Channel(m.ParentID)
+	parent, err := Dsession.State.Channel(m.ParentID)
 	CheckError("Failed to get parent channel", err)
 
 	if parent.Name == "IRC-Channels" {
@@ -153,11 +163,19 @@ func onChannelEdited(dsession *discordgo.Session, m *discordgo.ChannelUpdate) {
 	}
 }
 
-func onDiscordMsg(dssession *discordgo.Session, m *discordgo.MessageCreate) {
+func onDiscordMsg(dsession *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// Ignore all messages created by bots (includes IRC messages)
 	if m.Author.Bot {
 		return
+	}
+
+	// see if message is a command
+	for _, mention := range m.Mentions {
+		if mention.ID == Dsession.State.User.ID {
+			parseCommand(m)
+			return
+		}
 	}
 
 	channel, err := Dsession.State.Channel(m.ChannelID)
@@ -180,4 +198,20 @@ func onDiscordMsg(dssession *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	IrcSession.Privmsg(channelName, SanitizeMsg(m))
+}
+
+func parseCommand(msg *discordgo.MessageCreate) {
+	// trim mention
+	text := strings.Replace(msg.Content, "<@" + Dsession.State.User.ID + ">", "", -1)
+	text = strings.TrimSpace(text)
+	text = strings.ToLower(text)
+
+	parts := strings.Split(text, " ")
+
+	if cmd, ok := Commands[parts[0]]; ok {
+		cmd.Run(msg.Message)
+	} else {
+		_, err := Dsession.ChannelMessageSend(msg.ChannelID, "Unrecognized command")
+		CheckError("Failed to send message", err)
+	}
 }

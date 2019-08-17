@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -19,9 +20,11 @@ func main() {
 	ircbot.SetupBot()
 	discord.SetupBot()
 
-	go IrcSession.Loop()
 	err = Dsession.Open()
+	// h
+	time.Sleep(3 * time.Second)
 	CheckError("Failed to start discord bot", err)
+	go IrcSession.Loop()
 
 	log.Info("Bridge is now running. Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
