@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"fmt"
 	. "github.com/BonusPlay/Bifrost/util"
 	"github.com/bwmarrin/discordgo"
 	"github.com/spf13/viper"
@@ -198,6 +199,11 @@ func onDiscordMsg(dsession *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	IrcSession.Privmsg(channelName, SanitizeMsg(m))
+
+	// get links to attachments and send them as well
+	for _, attachment := range m.Attachments {
+		IrcSession.Privmsg(channelName, fmt.Sprintf("%s: %s", attachment.Filename, attachment.URL))
+	}
 }
 
 func parseCommand(msg *discordgo.MessageCreate) {
